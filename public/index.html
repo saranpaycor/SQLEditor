@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SQL File Executor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #181825;
+      border-bottom: 1px solid #313244;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header svg { color: #89b4fa; }
+
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #cdd6f4;
+    }
+
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 340px;
+      min-width: 280px;
+      background: #181825;
+      border-right: 1px solid #313244;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6c7086;
+      margin-bottom: 6px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: #a6adc8;
+      margin-bottom: 4px;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    select {
+      width: 100%;
+      padding: 7px 10px;
+      background: #313244;
+      border: 1px solid #45475a;
+      border-radius: 6px;
+      color: #cdd6f4;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    select:focus {
+      border-color: #89b4fa;
+    }
+
+    .auth-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .auth-row label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #cdd6f4;
+    }
+
+    #sqlCredentials { display: none; }
+
+    .file-section { display: flex; flex-direction: column; gap: 8px; }
+
+    .file-input-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .file-input-group input {
+      flex: 1;
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s;
+    }
+
+    .btn:hover { opacity: 0.88; }
+    .btn:active { opacity: 0.75; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary {
+      background: #89b4fa;
+      color: #1e1e2e;
+    }
+
+    .btn-secondary {
+      background: #313244;
+      color: #cdd6f4;
+      border: 1px solid #45475a;
+    }
+
+    .btn-success {
+      background: #a6e3a1;
+      color: #1e1e2e;
+      width: 100%;
+      padding: 9px;
+      font-size: 0.92rem;
+    }
+
+    .btn-test {
+      background: #fab387;
+      color: #1e1e2e;
+      width: 100%;
+      padding: 7px;
+      font-size: 0.82rem;
+    }
+
+    .status-bar {
+      font-size: 0.78rem;
+      padding: 5px 8px;
+      border-radius: 5px;
+      display: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+
+    .status-bar.info  { display: block; background: #313244; color: #89b4fa; }
+    .status-bar.ok    { display: block; background: #1e3a2e; color: #a6e3a1; }
+    .status-bar.error { display: block; background: #3a1e1e; color: #f38ba8; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #313244;
+    }
+
+    /* Content area */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      padding: 10px 16px;
+      background: #181825;
+      border-bottom: 1px solid #313244;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toolbar span {
+      font-size: 0.82rem;
+      color: #6c7086;
+    }
+
+    #fileNameDisplay {
+      font-size: 0.85rem;
+      color: #cdd6f4;
+      font-weight: 500;
+    }
+
+    .results-area {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #45475a;
+      gap: 12px;
+    }
+
+    .placeholder svg { color: #313244; }
+
+    .placeholder p { font-size: 0.9rem; }
+
+    .result-block {
+      background: #181825;
+      border: 1px solid #313244;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .result-block-header {
+      padding: 8px 14px;
+      background: #1e1e2e;
+      border-bottom: 1px solid #313244;
+      font-size: 0.78rem;
+      color: #6c7086;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .result-block-header .row-count {
+      background: #313244;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.72rem;
+      color: #89b4fa;
+    }
+
+    .message-block {
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      color: #a6e3a1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    thead th {
+      background: #1e1e2e;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #89b4fa;
+      border-bottom: 1px solid #313244;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+    }
+
+    tbody tr:nth-child(even) { background: #1e1e2e; }
+    tbody tr:hover { background: #313244; }
+
+    tbody td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #2a2a3e;
+      color: #cdd6f4;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .null-val { color: #585b70; font-style: italic; }
+
+    .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #45475a;
+      border-top-color: #89b4fa;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .executing .spinner { display: inline-block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+    <path d="M3 5v4c0 1.657 4.03 3 9 3s9-1.343 9-3V5"/>
+    <path d="M3 9v4c0 1.657 4.03 3 9 3s9-1.343 9-3V9"/>
+    <path d="M3 13v4c0 1.657 4.03 3 9 3s9-1.343 9-3v-4"/>
+  </svg>
+  <h1>SQL File Executor</h1>
+</header>
+
+<div class="main">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <!-- Connection -->
+    <div>
+      <div class="section-title">Connection</div>
+
+      <div style="margin-bottom:10px">
+        <label for="serverName">Server Name <span style="color:#6c7086;font-size:0.78rem">(\instance or ,port supported)</span></label>
+        <input type="text" id="serverName" placeholder="e.g. prtsql02-n12\INST or server,1433" />
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1">
+          <label for="databaseName">Database</label>
+          <input type="text" id="databaseName" placeholder="master" />
+        </div>
+        <div style="width:80px">
+          <label for="portNumber">Port</label>
+          <input type="text" id="portNumber" placeholder="1433" />
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div class="section-title" style="margin-bottom:8px">Authentication</div>
+        <div class="auth-row" style="margin-bottom:8px">
+          <label>
+            <input type="radio" name="authType" value="sso" checked onchange="toggleAuth(this.value)" />
+            Windows SSO
+          </label>
+          <label>
+            <input type="radio" name="authType" value="windows" onchange="toggleAuth(this.value)" />
+            Windows (NTLM)
+          </label>
+          <label>
+            <input type="radio" name="authType" value="sql" onchange="toggleAuth(this.value)" />
+            SQL Auth
+          </label>
+        </div>
+        <div id="windowsCredentials" style="display:none">
+          <div style="margin-bottom:8px">
+            <label for="winDomain">Domain <span style="color:#6c7086;font-size:0.78rem">(optional)</span></label>
+            <input type="text" id="winDomain" placeholder="CORP" autocomplete="off" />
+          </div>
+          <div style="margin-bottom:8px">
+            <label for="winUser">Username</label>
+            <input type="text" id="winUser" placeholder="domain\user" autocomplete="username" />
+          </div>
+          <div>
+            <label for="winPass">Password</label>
+            <input type="password" id="winPass" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
+        <div id="ssoCredentials">
+          <div style="font-size:0.78rem;color:#6c7086;margin-bottom:8px;padding:6px 8px;background:#1e1e2e;border-radius:5px;border:1px solid #313244;">
+            Uses your Windows identity via <strong style="color:#a6adc8">LogonUser</strong> impersonation &mdash; same as <code>runas /netonly</code>.<br/>
+            Enter the domain credentials to use for connecting to SQL Server.
+          </div>
+          <div style="margin-bottom:8px">
+            <label for="ssoDomain">Domain</label>
+            <input type="text" id="ssoDomain" placeholder="pccin" autocomplete="off" />
+          </div>
+          <div style="margin-bottom:8px">
+            <label for="ssoUser">Username</label>
+            <input type="text" id="ssoUser" placeholder="sar071023" autocomplete="username" />
+          </div>
+          <div>
+            <label for="ssoPass">Password</label>
+            <input type="password" id="ssoPass" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
+        <div id="sqlCredentials">
+          <div style="margin-bottom:8px">
+            <label for="sqlUser">Username</label>
+            <input type="text" id="sqlUser" placeholder="sa" autocomplete="username" />
+          </div>
+          <div>
+            <label for="sqlPass">Password</label>
+            <input type="password" id="sqlPass" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-test" onclick="testConnection()">Test Connection</button>
+      <div id="connStatus" class="status-bar" style="margin-top:8px"></div>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- File -->
+    <div class="file-section">
+      <div class="section-title">SQL File</div>
+
+      <div>
+        <label>File Input Method</label>
+        <select id="inputMethod" onchange="toggleInputMethod(this.value)">
+          <option value="path">Local File Path</option>
+          <option value="upload">Upload File</option>
+        </select>
+      </div>
+
+      <div id="pathInput">
+        <label for="filePath">File Path</label>
+        <div class="file-input-group">
+          <input type="text" id="filePath" placeholder="C:\scripts\script.sql" />
+        </div>
+      </div>
+
+      <div id="uploadInput" style="display:none">
+        <label for="fileUpload">Select SQL File</label>
+        <input type="file" id="fileUpload" accept=".sql,.txt"
+          style="color:#cdd6f4;background:#313244;border:1px solid #45475a;border-radius:6px;padding:5px 8px;width:100%;font-size:0.85rem;cursor:pointer;"
+          onchange="onFileSelected(this)" />
+      </div>
+    </div>
+
+    <hr class="divider"/>
+
+    <button class="btn btn-success" id="executeBtn" onclick="executeSQL()">
+      <span id="executeSpinner" class="spinner"></span>
+      &#9654; Execute
+    </button>
+
+    <div id="execStatus" class="status-bar"></div>
+
+  </aside>
+
+  <!-- Results -->
+  <div class="content">
+    <div class="toolbar">
+      <span>Results</span>
+      <span id="fileNameDisplay"></span>
+      <div id="toolbarSpinner" class="spinner"></div>
+    </div>
+    <div class="results-area" id="resultsArea">
+      <div class="placeholder" id="placeholderMsg">
+        <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/>
+          <path d="M3 5v4c0 1.657 4.03 3 9 3s9-1.343 9-3V5"/>
+          <path d="M3 9v4c0 1.657 4.03 3 9 3s9-1.343 9-3V9"/>
+          <path d="M3 13v4c0 1.657 4.03 3 9 3s9-1.343 9-3v-4"/>
+        </svg>
+        <p>Configure a connection, select a SQL file, and click Execute.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleAuth(val) {
+    document.getElementById('ssoCredentials').style.display     = val === 'sso'     ? 'block' : 'none';
+    document.getElementById('windowsCredentials').style.display = val === 'windows' ? 'block' : 'none';
+    document.getElementById('sqlCredentials').style.display     = val === 'sql'     ? 'block' : 'none';
+  }
+
+  function toggleInputMethod(val) {
+    document.getElementById('pathInput').style.display   = val === 'path'   ? 'block' : 'none';
+    document.getElementById('uploadInput').style.display = val === 'upload' ? 'block' : 'none';
+    document.getElementById('fileNameDisplay').textContent = '';
+  }
+
+  function onFileSelected(input) {
+    const name = input.files[0] ? input.files[0].name : '';
+    document.getElementById('fileNameDisplay').textContent = name;
+  }
+
+  function getAuthType() {
+    return document.querySelector('input[name="authType"]:checked').value;
+  }
+
+  function setStatus(id, type, msg) {
+    const el = document.getElementById(id);
+    el.className = 'status-bar ' + type;
+    el.textContent = msg;
+  }
+
+  function setLoading(on) {
+    const btn = document.getElementById('executeBtn');
+    const sp  = document.getElementById('executeSpinner');
+    const ts  = document.getElementById('toolbarSpinner');
+    btn.disabled = on;
+    sp.style.display = on ? 'inline-block' : 'none';
+    ts.style.display = on ? 'inline-block' : 'none';
+  }
+
+  async function testConnection() {
+    const server   = document.getElementById('serverName').value.trim();
+    const database = document.getElementById('databaseName').value.trim();
+    const port     = document.getElementById('portNumber').value.trim();
+    const authType = getAuthType();
+
+    if (!server) { setStatus('connStatus', 'error', 'Server name is required.'); return; }
+
+    setStatus('connStatus', 'info', 'Testing connection…');
+
+    const body = { server, database, authType, port: port || undefined };
+    if (authType === 'sso') {
+      body.domain   = document.getElementById('ssoDomain').value;
+      body.username = document.getElementById('ssoUser').value;
+      body.password = document.getElementById('ssoPass').value;
+    } else if (authType === 'sql') {
+      body.username = document.getElementById('sqlUser').value;
+      body.password = document.getElementById('sqlPass').value;
+    } else if (authType === 'windows') {
+      body.domain   = document.getElementById('winDomain').value;
+      body.username = document.getElementById('winUser').value;
+      body.password = document.getElementById('winPass').value;
+    }
+
+    try {
+      const res  = await fetch('/api/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      setStatus('connStatus', data.success ? 'ok' : 'error', data.message);
+    } catch (e) {
+      setStatus('connStatus', 'error', 'Network error: ' + e.message);
+    }
+  }
+
+  async function executeSQL() {
+    const server   = document.getElementById('serverName').value.trim();
+    const database = document.getElementById('databaseName').value.trim();
+    const port     = document.getElementById('portNumber').value.trim();
+    const authType = getAuthType();
+    const method   = document.getElementById('inputMethod').value;
+
+    if (!server) { setStatus('execStatus', 'error', 'Server name is required.'); return; }
+
+    let formData;
+
+    if (method === 'path') {
+      const filePath = document.getElementById('filePath').value.trim();
+      if (!filePath) { setStatus('execStatus', 'error', 'File path is required.'); return; }
+      document.getElementById('fileNameDisplay').textContent = filePath.split(/[\\/]/).pop();
+
+      // Send as JSON
+      const body = { server, database, authType, filePath, port: port || undefined };
+      if (authType === 'sso') {
+        body.domain   = document.getElementById('ssoDomain').value;
+        body.username = document.getElementById('ssoUser').value;
+        body.password = document.getElementById('ssoPass').value;
+      } else if (authType === 'sql') {
+        body.username = document.getElementById('sqlUser').value;
+        body.password = document.getElementById('sqlPass').value;
+      } else if (authType === 'windows') {
+        body.domain   = document.getElementById('winDomain').value;
+        body.username = document.getElementById('winUser').value;
+        body.password = document.getElementById('winPass').value;
+      }
+
+      setLoading(true);
+      setStatus('execStatus', 'info', 'Executing…');
+
+      try {
+        const res  = await fetch('/api/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        renderResults(data);
+      } catch (e) {
+        setStatus('execStatus', 'error', 'Network error: ' + e.message);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Upload method
+    const fileInput = document.getElementById('fileUpload');
+    if (!fileInput.files.length) { setStatus('execStatus', 'error', 'No file selected.'); return; }
+
+    formData = new FormData();
+    formData.append('sqlFile', fileInput.files[0]);
+    formData.append('server', server);
+    formData.append('database', database);
+    formData.append('authType', authType);
+    if (port) formData.append('port', port);
+    if (authType === 'sso') {
+      formData.append('domain',   document.getElementById('ssoDomain').value);
+      formData.append('username', document.getElementById('ssoUser').value);
+      formData.append('password', document.getElementById('ssoPass').value);
+    } else if (authType === 'sql') {
+      formData.append('username', document.getElementById('sqlUser').value);
+      formData.append('password', document.getElementById('sqlPass').value);
+    } else if (authType === 'windows') {
+      formData.append('domain',   document.getElementById('winDomain').value);
+      formData.append('username', document.getElementById('winUser').value);
+      formData.append('password', document.getElementById('winPass').value);
+    }
+
+    setLoading(true);
+    setStatus('execStatus', 'info', 'Executing…');
+
+    try {
+      const res  = await fetch('/api/execute', { method: 'POST', body: formData });
+      const data = await res.json();
+      renderResults(data);
+    } catch (e) {
+      setStatus('execStatus', 'error', 'Network error: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResults(data) {
+    const area = document.getElementById('resultsArea');
+
+    if (!data.success) {
+      setStatus('execStatus', 'error', data.message);
+      area.innerHTML = `
+        <div class="result-block">
+          <div class="result-block-header">Error</div>
+          <div class="message-block" style="color:#f38ba8">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            ${escapeHtml(data.message)}
+          </div>
+        </div>`;
+      return;
+    }
+
+    setStatus('execStatus', 'ok', `Executed successfully — ${data.results.length} result set(s).`);
+
+    area.innerHTML = '';
+
+    data.results.forEach((result, i) => {
+      const block = document.createElement('div');
+      block.className = 'result-block';
+
+      // Support both {message} (tedious) and {type:'message'} (SSO PowerShell)
+      const isMessage = result.message || result.type === 'message';
+      const msgText   = result.message || '';
+
+      if (isMessage) {
+        const isErr = msgText.startsWith('Error:');
+        block.innerHTML = `
+          <div class="result-block-header">Statement ${i + 1}</div>
+          <div class="message-block" style="${isErr ? 'color:#f38ba8' : ''}">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            ${escapeHtml(msgText)}
+          </div>`;
+      } else {
+        const cols = result.columns;
+        // rows can be an array of objects (tedious) or array of ordered-hashtables (SSO)
+        const rows = result.rows || [];
+        const rowCnt = rows.length;
+
+        let thead = '<tr>' + cols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr>';
+        let tbody = rows.map(row =>
+          '<tr>' + cols.map(c => {
+            const val = row[c];
+            if (val === null || val === undefined) return '<td><span class="null-val">NULL</span></td>';
+            return `<td title="${escapeHtml(String(val))}">${escapeHtml(String(val))}</td>`;
+          }).join('') + '</tr>'
+        ).join('');
+
+        block.innerHTML = `
+          <div class="result-block-header">
+            <span>Result Set ${i + 1}</span>
+            <span class="row-count">${rowCnt} row${rowCnt !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>${thead}</thead>
+              <tbody>${tbody}</tbody>
+            </table>
+          </div>`;
+      }
+
+      area.appendChild(block);
+    });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+              .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+</script>
+
+</body>
+</html>
